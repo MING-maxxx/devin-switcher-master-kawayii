@@ -1,4 +1,4 @@
-const { invoke } = window.__TAURI__.core;
+const invoke = ((r) => (window.dswWrapInvoke ? window.dswWrapInvoke(r) : r))(window.__TAURI__.core.invoke);
 const { open } = window.__TAURI__.shell;
 const { getCurrentWindow } = window.__TAURI__.window;
 
