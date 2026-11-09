@@ -135,6 +135,166 @@ mod gui {
         logged("launch_parallel", ops::launch_parallel(&name, cwd.as_deref()))
     }
 
+    const MINI_W: f64 = 280.0;
+    const MINI_H: f64 = 410.0;
+
+    fn mode_path() -> std::path::PathBuf {
+        crate::paths::vault_dir().join("ui.txt")
+    }
+
+    /// `mini [x y]` or `main [x y]`: which window the app comes up with,
+    /// and where the floating window was last left.
+    pub fn read_mode() -> (bool, Option<(i32, i32)>) {
+        let s = std::fs::read_to_string(mode_path()).unwrap_or_default();
+        let mut it = s.split_whitespace();
+        let mini = it.next() == Some("mini");
+        let x = it.next().and_then(|v| v.parse::<i32>().ok());
+        let y = it.next().and_then(|v| v.parse::<i32>().ok());
+        (mini, x.zip(y))
+    }
+
+    fn write_mode(mini: bool, pos: Option<(i32, i32)>) {
+        let head = if mini { "mini" } else { "main" };
+        let s = match pos {
+            Some((x, y)) => format!("{head} {x} {y}"),
+            None => head.to_string(),
+        };
+        let p = mode_path();
+        if let Some(d) = p.parent() {
+            let _ = std::fs::create_dir_all(d);
+        }
+        let _ = std::fs::write(p, s);
+    }
+
+    /// Saved spot if it is still on a screen, else bottom-right of the
+    /// primary monitor.
+    fn mini_pos(app: &tauri::AppHandle, saved: Option<(i32, i32)>) -> (i32, i32) {
+        use tauri::Manager;
+        let main = app.get_webview_window("main");
+        let mons = main
+            .as_ref()
+            .and_then(|w| w.available_monitors().ok())
+            .unwrap_or_default();
+        if let Some((x, y)) = saved {
+            let on_screen = mons.iter().any(|m| {
+                let (p, s) = (m.position(), m.size());
+                x >= p.x - 40
+                    && y >= p.y - 40
+                    && x < p.x + s.width as i32 - 40
+                    && y < p.y + s.height as i32 - 40
+            });
+            if on_screen {
+                return (x, y);
+            }
+        }
+        if let Some(m) = main
+            .as_ref()
+            .and_then(|w| w.primary_monitor().ok().flatten())
+        {
+            let (p, s, k) = (m.position(), m.size(), m.scale_factor());
+            return (
+                p.x + s.width as i32 - ((MINI_W + 24.0) * k) as i32,
+                p.y + s.height as i32 - ((MINI_H + 72.0) * k) as i32,
+            );
+        }
+        (100, 100)
+    }
+
+    /// Show the floating window (created on first use) and park the full
+    /// one. The floating window exists only while this mode is in use.
+    pub fn open_mini(app: &tauri::AppHandle) -> Result<(), String> {
+        use tauri::Manager;
+        if let Some(w) = app.get_webview_window("mini") {
+            let _ = w.show();
+            let _ = w.set_focus();
+        } else {
+            let (_, saved) = read_mode();
+            let (x, y) = mini_pos(app, saved);
+            let w = tauri::WebviewWindowBuilder::new(
+                app,
+                "mini",
+                tauri::WebviewUrl::App("index.html?mini=1".into()),
+            )
+            .title("Devin Switch")
+            .inner_size(MINI_W, MINI_H)
+            .decorations(false)
+            .transparent(true)
+            .shadow(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .visible(false)
+            .build()
+            .map_err(|e| e.to_string())?;
+            let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+            let _ = w.show();
+        }
+        if let Some(m) = app.get_webview_window("main") {
+            let _ = m.hide();
+        }
+        let pos = app
+            .get_webview_window("mini")
+            .and_then(|w| w.outer_position().ok())
+            .map(|p| (p.x, p.y));
+        write_mode(true, pos);
+        Ok(())
+    }
+
+    /// Bring the full window back (tray click, second launch, expand
+    /// button) and retire the floating one.
+    pub fn raise_main(app: &tauri::AppHandle) {
+        use tauri::Manager;
+        let (_, saved) = read_mode();
+        let mut pos = saved;
+        if let Some(w) = app.get_webview_window("mini") {
+            if let Ok(p) = w.outer_position() {
+                pos = Some((p.x, p.y));
+            }
+            let _ = w.close();
+        }
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+        }
+        write_mode(false, pos);
+    }
+
+    /// Remember where the floating window sits (called on quit).
+    pub fn save_pos(app: &tauri::AppHandle) {
+        use tauri::Manager;
+        if let Some(w) = app.get_webview_window("mini") {
+            if let Ok(p) = w.outer_position() {
+                write_mode(read_mode().0, Some((p.x, p.y)));
+            }
+        }
+    }
+
+    #[tauri::command]
+    pub async fn mini_enter(app: tauri::AppHandle) -> Result<(), String> {
+        logged("mini_enter", open_mini(&app))
+    }
+
+    #[tauri::command]
+    pub async fn mini_leave(app: tauri::AppHandle) -> Result<(), String> {
+        raise_main(&app);
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn mini_hide(app: tauri::AppHandle) -> Result<(), String> {
+        use tauri::Manager;
+        if let Some(w) = app.get_webview_window("mini") {
+            let _ = w.hide();
+        }
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn mini_drag(window: tauri::WebviewWindow) -> Result<(), String> {
+        window.start_dragging().map_err(|e| e.to_string())
+    }
+
     /// Tray popup menu: current sign-in(s) as a disabled header, saved
     /// accounts as check items whose id carries the switch scope
     /// (`sw:<scope>:<name>` — mirrors the card's "only the missing side"
@@ -278,12 +438,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Second launch → focus the existing window instead of
             // running a duplicate poller. It may be hidden in the tray.
-            use tauri::Manager;
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
-                let _ = w.unminimize();
-                let _ = w.set_focus();
-            }
+            gui::raise_main(app);
         }))
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
@@ -291,13 +446,7 @@ pub fn run() {
                 tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
                 Manager, WindowEvent,
             };
-            let raise = |app: &tauri::AppHandle| {
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.show();
-                    let _ = w.unminimize();
-                    let _ = w.set_focus();
-                }
-            };
+            let raise = |app: &tauri::AppHandle| gui::raise_main(app);
             let menu = gui::tray_menu(app.handle())?;
             TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
@@ -307,6 +456,7 @@ pub fn run() {
                 .on_menu_event(move |app, e| {
                     let id = e.id.as_ref();
                     if id == "quit" {
+                        gui::save_pos(app);
                         app.exit(0);
                     } else if id == "show" {
                         raise(app);
@@ -331,12 +481,7 @@ pub fn run() {
                         button_state: MouseButtonState::Up,
                         ..
                     } => {
-                        let app = tray.app_handle();
-                        if let Some(w) = app.get_webview_window("main") {
-                            let _ = w.show();
-                            let _ = w.unminimize();
-                            let _ = w.set_focus();
-                        }
+                        gui::raise_main(tray.app_handle());
                     }
                     // Hover refresh keeps the menu's sign-in/account
                     // state current when the popup actually opens.
@@ -363,6 +508,22 @@ pub fn run() {
                     _ => {}
                 });
             }
+            // The main window starts hidden (tauri.conf.json): come up as
+            // the floating window if that was the last mode, else show it.
+            let (mini, _) = gui::read_mode();
+            let in_mini = mini
+                && match gui::open_mini(app.handle()) {
+                    Ok(()) => true,
+                    Err(e) => {
+                        crate::ops::log_error("mini_start", &e);
+                        false
+                    }
+                };
+            if !in_mini {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -382,6 +543,10 @@ pub fn run() {
             gui::manual_start,
             gui::manual_finish,
             gui::launch_parallel,
+            gui::mini_enter,
+            gui::mini_leave,
+            gui::mini_hide,
+            gui::mini_drag,
         ])
         .run(tauri::generate_context!())
         .expect("error while running devin-switch");

@@ -1,29 +1,38 @@
 (() => {
   "use strict";
+  const MINI = !!window.__MINI__ || /[?&]mini=1/.test(location.search);
   const lang = () => (localStorage.getItem("dsw-lang") === "en" ? "en" : "zh");
   const SAY = {
-    zh: { idle: "欢迎回来～", happy: "额度还很多，放心用吧～", normal: "额度用掉一半啦，留意一下哦", sleepy: "额度快用完啦，换个号吧～", switching: "正在切换，等我一下～", success: "搞定啦！", error: "呜…出错了，看看提示吧", loading: "我去看看额度～", empty: "还没有账号哦，快添加一个吧～", poke: ["嘿嘿～", "别戳啦，好痒～", "今天也要加油哦！"] },
-    en: { idle: "Welcome back~", happy: "Plenty of quota left~", normal: "About half used, keep an eye on it", sleepy: "Quota is almost gone, try another account~", switching: "Switching, one moment~", success: "All done!", error: "Oops, something went wrong…", loading: "Let me check the quota~", empty: "No accounts yet, add one~", poke: ["Hehe~", "That tickles~", "Keep going!"] },
+    zh: { idle: "欢迎回来～", happy: "额度还很多，放心用吧～", normal: "额度用掉一半啦，留意一下哦", sleepy: "额度快用完啦，换个号吧～", switching: "正在切换，等我一下～", success: "搞定啦！", error: "呜…出错了，看看提示吧", loading: "我去看看额度～", empty: "还没有账号哦，快添加一个吧～", drag: "哇，要带我去哪～", poke: ["嘿嘿～", "别戳啦，好痒～", "今天也要加油哦！"] },
+    en: { idle: "Welcome back~", happy: "Plenty of quota left~", normal: "About half used, keep an eye on it", sleepy: "Quota is almost gone, try another account~", switching: "Switching, one moment~", success: "All done!", error: "Oops, something went wrong…", loading: "Let me check the quota~", empty: "No accounts yet, add one~", drag: "Whoa, where are we going~", poke: ["Hehe~", "That tickles~", "Keep going!"] },
   };
-  const STATES = ["idle", "happy", "normal", "sleepy", "switching", "success", "error", "loading", "empty"];
+  const STATES = ["idle", "happy", "normal", "sleepy", "switching", "success", "error", "loading", "empty", "drag"];
   const state = { on: localStorage.getItem("dsw-mascot") !== "off", mood: "normal", empty: false, event: null };
+  const M = (window.dswMascot = { state, onPaint: null, onSay: null, onData: null });
   let root, img, bub, timer, bubTimer;
   const t = (k) => SAY[lang()][k];
-  const key = () => state.event || (state.empty ? "empty" : state.mood);
+  const key = () => {
+    const k = state.event || (state.empty ? "empty" : state.mood);
+    return STATES.includes(k) ? k : "idle";
+  };
 
   function paint() {
-    if (!root) return;
-    root.classList.toggle("off", !state.on);
-    document.body.classList.toggle("dsw-m", state.on);
-    const src = `mascot/${STATES.includes(key()) ? key() : "idle"}.png`;
-    if (!img.src.endsWith(src)) img.src = src;
+    if (root) {
+      root.classList.toggle("off", !state.on);
+      document.body.classList.toggle("dsw-m", state.on);
+      const src = `mascot/${key()}.png`;
+      if (!img.src.endsWith(src)) img.src = src;
+    }
+    if (M.onPaint) M.onPaint(key());
   }
   function say(text, ms = 4200) {
-    if (!bub) return;
-    bub.textContent = text;
-    bub.classList.add("show");
-    clearTimeout(bubTimer);
-    bubTimer = setTimeout(() => bub.classList.remove("show"), ms);
+    if (bub) {
+      bub.textContent = text;
+      bub.classList.add("show");
+      clearTimeout(bubTimer);
+      bubTimer = setTimeout(() => bub.classList.remove("show"), ms);
+    }
+    if (M.onSay) M.onSay(text, ms);
   }
   function setEvent(k, ms) {
     clearTimeout(timer);
@@ -33,6 +42,12 @@
     if (ms) timer = setTimeout(() => { state.event = null; paint(); }, ms);
   }
   function clearEvent() { clearTimeout(timer); state.event = null; paint(); }
+  function poke(el) {
+    const L = t("poke");
+    say(L[Math.floor(Math.random() * L.length)], 2600);
+    if (el) { el.classList.remove("boing"); void el.offsetWidth; el.classList.add("boing"); }
+  }
+  Object.assign(M, { say, setEvent, clearEvent, poke, t, key });
 
   const leftOf = (u) => {
     if (!u) return null;
@@ -50,6 +65,7 @@
       const em = r.length === 0;
       if (em !== state.empty) { state.empty = em; paint(); if (em) say(t("empty"), 6000); }
     }
+    if (M.onData) M.onData(cmd, r);
   }
 
   const START = { use_profile: "switching", refresh_usage: "loading", refresh_all: "loading" };
@@ -71,6 +87,8 @@
   };
 
   function init() {
+    STATES.forEach((s) => { new Image().src = `mascot/${s}.png`; });
+    if (MINI) return;
     root = document.createElement("div");
     root.id = "dsw-mascot";
     bub = document.createElement("div");
@@ -81,13 +99,7 @@
     root.append(bub, img);
     document.body.append(root);
     img.onerror = () => { root.classList.add("off"); document.body.classList.remove("dsw-m"); };
-    img.onclick = () => {
-      const L = t("poke");
-      say(L[Math.floor(Math.random() * L.length)], 2600);
-      img.classList.remove("boing");
-      void img.offsetWidth;
-      img.classList.add("boing");
-    };
+    img.onclick = () => poke(img);
     const h1 = document.querySelector("h1");
     if (h1) { const ic = new Image(); ic.className = "dsw-icon"; ic.alt = ""; ic.onerror = () => ic.remove(); ic.src = "mascot/icon.png"; h1.prepend(ic); }
     const lb = document.getElementById("langBtn");
@@ -103,7 +115,6 @@
     }
     const card = document.querySelector("#sheet .sheet-card");
     if (card) { const p = new Image(); p.className = "dsw-peek"; p.alt = ""; p.onerror = () => p.remove(); p.src = "mascot/peek.png"; card.prepend(p); }
-    STATES.forEach((s) => { new Image().src = `mascot/${s}.png`; });
     paint();
     say(t("idle"), 3000);
   }

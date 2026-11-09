@@ -98,3 +98,29 @@ body.dsw-m main { padding-right: 130px; }
 .dsw-peek { position: absolute; left: 50%; bottom: calc(100% - 20px); transform: translateX(-50%); height: 118px; width: auto; pointer-events: none; }
 @media (max-width: 540px) { #dsw-mascot { display: none; } body.dsw-m main { padding-right: 18px; } }
 @media (prefers-reduced-motion: reduce) { #dsw-mascot img, #dsw-mascot img.boing { animation: none; } }
+
+#miniBtn { right: 156px; }
+html.mini, html.mini body { background: transparent !important; overflow: hidden; }
+html.mini header, html.mini .sectag, html.mini main, html.mini #sheet, html.mini #toast, html.mini #splash, html.mini #dsw-mascot { display: none !important; }
+#mini { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding: 4px 8px 8px; user-select: none; }
+#mini .m-bub { position: relative; max-width: 252px; min-height: 20px; padding: 6px 12px; background: #fff; border: 2px solid var(--border); border-radius: 14px; font-size: 13px; line-height: 1.35; color: var(--text); opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; }
+#mini .m-bub.show { opacity: 1; transform: none; }
+#mini .m-bub::after { content: ""; position: absolute; left: 50%; margin-left: -6px; bottom: -8px; border: 6px solid transparent; border-top-color: var(--border); border-bottom: 0; }
+#mini .m-img { height: 190px; width: auto; position: relative; cursor: grab; -webkit-user-drag: none; filter: drop-shadow(0 6px 10px rgba(238, 95, 147, .28)); animation: dswBreathe 3.6s ease-in-out infinite; }
+#mini .m-img.boing { animation: dswBoing .5s ease; transform-origin: 50% 100%; }
+#mini .m-img.drag { animation: dswDangle .9s ease-in-out infinite; transform-origin: 50% 0; cursor: grabbing; }
+@keyframes dswDangle { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+#mini .m-card { position: relative; width: 100%; background: #fff; border: 2px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 9px 12px 8px; font-size: 12px; }
+#mini .m-top { display: flex; align-items: center; gap: 6px; }
+#mini .m-tag { flex: none; font-size: 10px; font-weight: 700; color: var(--accent); background: var(--card2); border-radius: 99px; padding: 0 7px; }
+#mini .m-name { min-width: 0; font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#mini .m-sub { color: var(--sub); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#mini .m-q { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-top: 3px; }
+#mini .m-q .qlab { width: 34px; }
+#mini .m-q .qbar { flex: 0 0 70px; }
+#mini .m-btns { display: flex; gap: 6px; margin-top: 7px; opacity: 0; transition: opacity .15s; }
+#mini:hover .m-btns, #mini .m-btns.pin { opacity: 1; }
+#mini .m-btns button { padding: 2px 10px; font-size: 11.5px; }
+#mini .m-menu { position: absolute; left: 10px; right: 10px; bottom: 150px; z-index: 5; max-height: 200px; overflow-y: auto; background: #fff; border: 2px solid var(--border); border-radius: 14px; box-shadow: 0 12px 26px rgba(238, 95, 147, .22); padding: 4px; }
+#mini .m-menu button { display: block; width: 100%; text-align: left; border: none; background: transparent; border-radius: 10px; padding: 5px 8px; font-size: 12px; font-weight: 600; box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mini .m-menu button:hover { background: var(--card2); }
