@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devin Switch</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="splash"><div class="spin"></div><div data-i18n="loading">Loading…</div></div>
+  <header>
+    <h1>Devin Switch</h1>
+    <button id="langBtn" class="lang">中/EN</button>
+    <div id="current" class="current">
+      <div class="currow">
+        <span class="curtag" id="tagCli" data-i18n="cliTag">CLI</span>
+        <span class="dot" id="dotCli"></span>
+        <div class="current-text">
+          <div id="labelCli" class="curlabel copyable" data-i18n-tt="copyHint" title="Click to copy">…</div>
+          <div id="subCli" class="sub"></div>
+          <div id="quotaCli" class="quota"></div>
+        </div>
+      </div>
+      <div class="currow hidden" id="rowDesktop">
+        <span class="curtag" data-i18n="desktopTag">DESKTOP</span>
+        <span class="dot" id="dotDesktop"></span>
+        <div class="current-text">
+          <div id="labelDesktop" class="curlabel copyable" data-i18n-tt="copyHint" title="Click to copy">…</div>
+          <div id="subDesktop" class="sub"></div>
+          <div id="quotaDesktop" class="quota"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sectag">
+    <span data-i18n="savedAccounts">SAVED ACCOUNTS</span>
+    <span id="tierCounts" class="tierc"></span>
+    <input id="filterIn" class="filter" data-i18n-ph="filterPh" placeholder="Filter…">
+    <button id="refAll" data-i18n="refAll">Refresh all</button>
+    <button id="addBtn" data-i18n="addAccount">+ Add account</button>
+  </div>
+  <main>
+    <div id="warnBanner" class="warn hidden"></div>
+    <section id="profiles" class="profiles"></section>
+  </main>
+
+  <!-- Add account sheet -->
+  <div id="sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <h2 data-i18n="addTitle">Add account</h2>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login" data-i18n="tabLogin">Browser sign-in</button>
+        <button class="tab" data-tab="current" data-i18n="tabCurrent">Save current</button>
+        <button class="tab" data-tab="token" data-i18n="tabToken">Paste token</button>
+        <button class="tab" data-tab="desktop" data-i18n="tabDesktop">Desktop</button>
+      </div>
+
+      <div class="tabpane" id="tab-login">
+        <p class="hint" data-i18n="loginHint">Sign in via your browser — it uses the
+        devin account already signed in there, if any.</p>
+        <p class="hint" data-i18n="loginName">The account is named after its
+        email — rename it from the card afterwards.</p>
+        <button id="startLogin" class="primary" data-i18n="startLogin">Start sign-in</button>
+        <div id="loginWait" class="hidden">
+          <p class="wait-text" data-i18n="waiting">Waiting for sign-in…</p>
+          <div class="linkrow">
+            <input id="loginUrl" readonly>
+            <button id="copyUrl" data-i18n="copy">Copy</button>
+            <button id="openUrl" data-i18n="open">Open</button>
+          </div>
+          <details class="manual">
+            <summary data-i18n="terminalInstead">Or run in a terminal instead</summary>
+            <code id="loginHint"></code>
+          </details>
+          <button id="cancelLogin" class="ghost" data-i18n="cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div class="tabpane hidden" id="tab-current">
+        <p class="hint" data-i18n="currentHint">Save the account the devin CLI is signed
+        in as right now. It's named after the account's email automatically.</p>
+        <button id="saveCurrent" class="primary" data-i18n="saveCurrent">Save current sign-in</button>
+      </div>
+
+      <div class="tabpane hidden" id="tab-token">
+        <p class="hint" data-i18n="tokenHint">Get a sign-in link, open it in
+        any browser — the page shows a code after sign-in. Paste the code
+        (or a devin-session-token$…) below.</p>
+        <button id="tokenLink" class="ghost" data-i18n="getLink">Get sign-in link</button>
+        <div id="tokenLinkRow" class="linkrow hidden" style="margin:8px 0">
+          <input id="tokenUrl" readonly>
+          <button id="copyTokenUrl" data-i18n="copy">Copy</button>
+          <button id="openTokenUrl" data-i18n="open">Open</button>
+        </div>
+        <div class="field">
+          <label data-i18n="codeOrToken">Code or token</label>
+          <input id="tokenValue" type="password" data-i18n-ph="codeOrTokenPh" placeholder="code or devin-session-token$…" autocomplete="off">
+        </div>
+        <button id="saveToken" class="primary" data-i18n="saveToken">Save</button>
+      </div>
+
+      <div class="tabpane hidden" id="tab-desktop">
+        <p class="hint" data-i18n="desktopHint">Import the account Devin Desktop is
+        signed in as — reads its stored session; Desktop can stay open.</p>
+        <button id="importDesktop" class="primary" data-i18n="importDesktop">Import Desktop sign-in</button>
+      </div>
+
+      <div class="logoutrow">
+        <span class="sub" data-i18n="logoutHint">To sign in with a different devin account, sign out in your browser first:</span>
+        <button id="openLogout" data-i18n="openLogout">Sign out in default browser</button>
+        <button id="copyLogout" class="ghost" data-i18n="copyLogout">Copy sign-out link</button>
+      </div>
+
+      <button id="closeSheet" class="close">✕</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
